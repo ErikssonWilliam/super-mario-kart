@@ -38,3 +38,7 @@ super_mario_kart
 .vscode
 
 smk_settings.cfg
+
+
+#Binaries
+src/websocket.cpp
