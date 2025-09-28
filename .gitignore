@@ -41,4 +41,3 @@ smk_settings.cfg
 
 
 #Binaries
-src/websocket.cpp
