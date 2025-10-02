@@ -172,7 +172,8 @@ int main() {
         // Create ioc object
         asio::io_context ioc;
         // localhost and port 8080
-        WebSocketClient client(ioc, "127.0.0.1", "8080");
+        //WebSocketClient client(ioc, "127.0.0.1", "8080");
+        WebSocketClient client(ioc, "host.docker.internal", "8080");
 
         // Start background thread for receiving actions
         std::thread recv_thread([&client]() {
