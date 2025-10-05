@@ -1,7 +1,9 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Texture.hpp> // This provides the full definition of sf::Texture
+#include <SFML/Graphics.hpp>         // Good practice to include this anyway
 #include <string>
+#include <array>                     // Needs sf::Texture to be defined first
 
 namespace Color {
 static const sf::Color Default(81, 142, 225);

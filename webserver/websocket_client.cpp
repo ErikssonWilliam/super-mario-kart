@@ -27,6 +27,7 @@ enum class ActionCode : uint8_t {
     ATTACK = 0x08,
     DEFEND = 0x09,
     STATUS_UPDATE = 0x0A,
+    SEND_OBSERVATION = 0x0B, //Client sends game state to server
     ERROR = 0xFF
 };
 
@@ -78,16 +79,19 @@ public:
             case ActionCode::ATTACK: return "ATTACK";
             case ActionCode::DEFEND: return "DEFEND";
             case ActionCode::STATUS_UPDATE: return "STATUS_UPDATE";
+            case ActionCode::SEND_OBSERVATION: return "SEND_OBSERVATION";
             case ActionCode::ERROR: return "ERROR";
             default: return "UNKNOWN";
         }
     }
 };
 
+class NetworkedGameClient; // Forward declaration
+
 class WebSocketClient {
 public:
     WebSocketClient(asio::io_context& ioc, const std::string& host, const std::string& port)
-        : resolver_(ioc), ws_(ioc), host_(host) 
+        : resolver_(ioc), ws_(ioc), host_(host), game_client_(game)
     {
         // Resolve DNS aka look up the domain name of the host
         auto const results = resolver_.resolve(host, port);
@@ -105,6 +109,7 @@ public:
         std::cout << "Connected to " << host << "\n";
     }
 
+    //Tobias har gjort en metod med logik för att skicka meddelanden i en annan branch. Ta in den hit.
 
     void receive_actions_loop() {
         try {
@@ -157,6 +162,41 @@ public:
         }
     }
 
+    // Within WebSocketClient
+/**
+ * @brief Handle received actions from the server (RL Agent Commands)
+ */
+//void handle_received_action(ActionCode action_code) {
+//    // Check if the callback pointer is valid
+//    if (!game_client_) return;
+//    
+//    std::cout << "Received action: " << MessageHandler::action_name(action_code);
+//
+//    switch (action_code) {
+//        case ActionCode::WELCOME:
+//            std::cout << "  -> Server welcomed us!" << std::endl;
+//            break;
+//        case ActionCode::PING:
+//            std::cout << "  -> Server sent ping, connection alive" << std::endl;
+//            break;
+//            
+//        // ADDED: Agent Commands trigger a callback to the game client
+//        case ActionCode::MOVE_UP:
+//        case ActionCode::MOVE_DOWN:
+//        case ActionCode::MOVE_LEFT:
+//        case ActionCode::MOVE_RIGHT:
+//        case ActionCode::ATTACK:
+//        case ActionCode::DEFEND:
+//            // This is the CRITICAL line: Tell the game to execute the agent's action
+//            game_client_->applyAgentAction(action_code); 
+//            break;
+//            
+//        default:
+//            std::cout << "  -> Other Action. No handler for this" << std::endl;
+//            break;
+//    }
+//}
+
     void close() {
         ws_.close(websocket::close_code::normal);
     }
@@ -165,8 +205,13 @@ private:
     tcp::resolver resolver_;
     websocket::stream<tcp::socket> ws_;
     std::string host_;
+    NetworkedGameClient* game_client_ = nullptr; // Pointer to the NetworkedGameClient to notify about actions. Allows the WebSocketClient to access all public and protected methods defined in the NetworkedGameClient class.
 };
 
+// Lägg till klass som ärver Game och hanterar nätverksspecifik logik
+
+
+//Uppdatera main för att använda NetworkedGameClient istället för WebSocketClient direkt
 int main() {
     try {
         // Create ioc object
