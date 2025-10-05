@@ -32,25 +32,34 @@ enum class ActionCode : uint8_t {
 
 class MessageHandler {
 public:
-    static std::vector<uint8_t> encode_action(ActionCode action_code, const std::string& data = "") {
+    /**
+     * Encode a statevector of integers to be sent to the server
+     * Format: [vector_size(4 bytes)][int1(4 bytes)][int2(4 bytes)]...
+     */
+    static std::vector<uint8_t> encode_vector_message(const std::vector<int>& data) {
         std::vector<uint8_t> message;
         
-        // Add action code (1 byte)
-        message.push_back(static_cast<uint8_t>(action_code));
+        // Add vector size (4 bytes, big-endian)
+        // The size of the vector is determined by 4 bytes. 0xFF means filter one byte >> means shift right. 
+        // Might not be needed since we know the size of the vector already.
+        uint32_t size = static_cast<uint32_t>(data.size());
+        message.push_back((size >> 24) & 0xFF);
+        message.push_back((size >> 16) & 0xFF);
+        message.push_back((size >> 8) & 0xFF);
+        message.push_back(size & 0xFF);
         
-        // Add data length (2 bytes, big-endian)
-        uint16_t data_length = static_cast<uint16_t>(data.length());
-        message.push_back(static_cast<uint8_t>(data_length >> 8));   // High byte
-        message.push_back(static_cast<uint8_t>(data_length & 0xFF)); // Low byte
-        
-        // Add data if present
-        if (data_length > 0) {
-            message.insert(message.end(), data.begin(), data.end());
+        // Add each integer (4 bytes each, big-endian) 4 bytes is integer size. 
+        for (int value : data) {
+            uint32_t int_value = static_cast<uint32_t>(value);
+            message.push_back((int_value >> 24) & 0xFF);
+            message.push_back((int_value >> 16) & 0xFF);
+            message.push_back((int_value >> 8) & 0xFF);
+            message.push_back(int_value & 0xFF);
         }
         
         return message;
     }
-    
+
     /**
      * Decode an action message
      * Returns: pair of (action_code, data_string)
@@ -61,26 +70,6 @@ public:
         ActionCode action_code = static_cast<ActionCode>(message[0]);
         
         return action_code;
-    }
-    
-    /**
-     * Get human-readable name for action code
-     */
-    static std::string action_name(ActionCode code) {
-        switch (code) {
-            case ActionCode::WELCOME: return "WELCOME";
-            case ActionCode::ECHO: return "ECHO";
-            case ActionCode::PING: return "PING";
-            case ActionCode::MOVE_UP: return "MOVE_UP";
-            case ActionCode::MOVE_DOWN: return "MOVE_DOWN";
-            case ActionCode::MOVE_LEFT: return "MOVE_LEFT";
-            case ActionCode::MOVE_RIGHT: return "MOVE_RIGHT";
-            case ActionCode::ATTACK: return "ATTACK";
-            case ActionCode::DEFEND: return "DEFEND";
-            case ActionCode::STATUS_UPDATE: return "STATUS_UPDATE";
-            case ActionCode::ERROR: return "ERROR";
-            default: return "UNKNOWN";
-        }
     }
 };
 
@@ -124,7 +113,6 @@ public:
                 try {
                     // Try to decode as action message
                     ActionCode action_code = MessageHandler::decode_action(message_data);
-                    std::cout << "Received action: " << MessageHandler::action_name(action_code);
                     
                     // Handle specific actions if needed
                     handle_received_action(action_code);
@@ -157,6 +145,51 @@ public:
         }
     }
 
+
+    /**
+     * Send GameState data to the server
+     * Format: 3 floats + 2 booleans (14 bytes total)
+     */
+    void send_gamestate(float speed, float dist_to_next, float angle_to_next, bool off_track, bool done) {
+        try {
+            // Create 14-byte message: 3 floats (4 bytes each) + 2 booleans (1 byte each)
+            std::vector<uint8_t> message(14);
+            
+            // Pack floats (big-endian)
+            uint32_t speed_bits = *reinterpret_cast<uint32_t*>(&speed);
+            uint32_t dist_bits = *reinterpret_cast<uint32_t*>(&dist_to_next);
+            uint32_t angle_bits = *reinterpret_cast<uint32_t*>(&angle_to_next);
+            
+            // Convert to big-endian
+            message[0] = (speed_bits >> 24) & 0xFF;
+            message[1] = (speed_bits >> 16) & 0xFF;
+            message[2] = (speed_bits >> 8) & 0xFF;
+            message[3] = speed_bits & 0xFF;
+            
+            message[4] = (dist_bits >> 24) & 0xFF;
+            message[5] = (dist_bits >> 16) & 0xFF;
+            message[6] = (dist_bits >> 8) & 0xFF;
+            message[7] = dist_bits & 0xFF;
+            
+            message[8] = (angle_bits >> 24) & 0xFF;
+            message[9] = (angle_bits >> 16) & 0xFF;
+            message[10] = (angle_bits >> 8) & 0xFF;
+            message[11] = angle_bits & 0xFF;
+            
+            // Pack booleans
+            message[12] = off_track ? 1 : 0;
+            message[13] = done ? 1 : 0;
+            
+            // Send the message
+            ws_.write(asio::buffer(message));
+            std::cout << "Sent GameState: speed=" << speed << ", dist=" << dist_to_next 
+                      << ", angle=" << angle_to_next << ", off_track=" << off_track 
+                      << ", done=" << done << std::endl;
+        } catch (std::exception& e) {
+            std::cerr << "Error sending GameState: " << e.what() << std::endl;
+        }
+    }
+
     void close() {
         ws_.close(websocket::close_code::normal);
     }
@@ -183,6 +216,17 @@ int main() {
         // Give some time for welcome message
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
+        // Send GameState data to Python server
+        client.send_gamestate(15.5f, 25.0f, 0.1f, false, false);
+        
+        // Send another GameState with different data
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        client.send_gamestate(20.0f, 10.0f, -0.3f, true, false);
+        
+        // Send final GameState
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        client.send_gamestate(0.0f, 0.0f, 0.0f, false, true);
+        
         // Wait for responses and keep connection alive to receive actions
         std::cout << "\nListening for actions from server...\n";
         std::cout << "Press Ctrl+C to exit\n";
@@ -198,4 +242,4 @@ int main() {
 }
 
 // Compilation command:
-// g++ -std=c++17 -I/path/to/boost client.cpp -lboost_system -pthread -o websocket_client
+// g++ -std=c++17 -I/path/to/boost websocket.cpp -lboost_system -pthread -o websocket
