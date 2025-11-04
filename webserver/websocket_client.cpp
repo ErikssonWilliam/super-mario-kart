@@ -208,9 +208,14 @@ void startNetwork() {
 
     void applyAgentAction(ActionCode action) {
         std::cout << "AGENT COMMAND RECEIVED: " << MessageHandler::action_name(action) << " -> Applying to game logic." << std::endl;
+
+        auto player = Driver::realPlayer;
+        if (!player || !player->canDrive()) return;
+
         switch (action) {
             case ActionCode::MOVE_UP: 
                 // TODO: Connect to actual player movement
+                player->speedForward = 1.0f;
                 break;
             case ActionCode::ATTACK:
                 // TODO: Connect to actual attack system
@@ -227,7 +232,10 @@ void startNetwork() {
         bool inRaceState = isInRaceState();
 
         //THIS LINE CAUSES THE GAME TO CRASH
-        //Input::disableInputs(inRaceState);
+        if (window.isOpen()) {
+    //Input::disableInputs(inRaceState);
+}
+
     }
 
     void run() override {
