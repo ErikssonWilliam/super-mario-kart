@@ -28,10 +28,20 @@ class Input {
     static Input instance;
     sf::Keyboard::Key map[(int)Key::__COUNT];
     const sf::RenderWindow *gameWindow;
+    bool inputsDisabled;
 
-    Input();
+    Input() : gameWindow(nullptr), inputsDisabled(false) {}
 
    public:
+
+    static inline void disableInputs(bool disable) {
+        instance.inputsDisabled = disable;
+    }
+    
+    static inline bool areInputsDisabled() {
+        return instance.inputsDisabled;
+    }
+
     // set window for focus checks
     static inline void setGameWindow(const sf::RenderWindow &window) {
         instance.gameWindow = &window;
@@ -55,10 +65,36 @@ class Input {
                event.key.code == get(action);
     }
     static inline bool held(const Key action) {
-        return sf::Keyboard::isKeyPressed(get(action)) &&
-               instance.gameWindow->hasFocus();
-    }
+            
+            if (instance.inputsDisabled) {
+                // Define which keys are DRIVING controls (to block)
+                bool isDrivingControl = 
+                    action == Key::ACCELERATE ||
+                    action == Key::BRAKE ||
+                    action == Key::DRIFT ||
+                    action == Key::TURN_LEFT || 
+                    action == Key::TURN_RIGHT ||
+                    action == Key::ITEM_FRONT ||
+                    action == Key::ITEM_BACK;
+                
+                if (isDrivingControl) {
+                    return false; // Block driving inputs when disabled
+                }
+                // Allow menu controls (PAUSE, ACCEPT, etc.) even when disabled
+            }
 
+            if (!instance.gameWindow) {
+        return sf::Keyboard::isKeyPressed(get(action));
+        std::cout << "[DEBUG] gameWindow is nullptr\n";
+    } else {
+    std::cout << "[DEBUG] gameWindow addr = " << instance.gameWindow << ", isOpen=" 
+              << instance.gameWindow->isOpen() << "\n";
+}
+            
+            
+            return sf::Keyboard::isKeyPressed(get(action)) &&
+                instance.gameWindow->hasFocus();
+        }
     // returns true if key is accepted in game
     static std::string getActionName(const Key action);
 
