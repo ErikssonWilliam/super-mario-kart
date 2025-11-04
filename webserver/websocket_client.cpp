@@ -12,6 +12,9 @@
 #include "../src/game.h"
 #include "../src/map/map.h"
 #include "../src/map/enums.h"
+#include "../src/ai/gradientdescent.h"
+#include <sstream>
+#include <iomanip>
 
 
 namespace beast = boost::beast;
@@ -94,8 +97,6 @@ public:
     WebSocketClient(asio::io_context& ioc, const std::string& host, const std::string& port, NetworkedGameClient* game_client)
         : resolver_(ioc), ws_(ioc), host_(host), game_client_(game_client)
     {
-        
-        
         // Resolve DNS and connect
         auto const results = resolver_.resolve(host, port);
         asio::connect(ws_.next_layer(), results);
@@ -174,7 +175,6 @@ private:
     websocket::stream<tcp::socket> ws_;
     std::string host_;
     NetworkedGameClient* game_client_ = nullptr;
-
 };
 
 
@@ -185,24 +185,22 @@ public:
         : Game(_bx, _by, _framerate),
           webSocketClient_(ioc, host, port, this)
     {
-        
-        
         // Start the game loop (shows waiting screen)
     }     
+    
     void startNetworkAsync() {
-    receiveThread_ = std::thread(&WebSocketClient::receive_actions_loop, &webSocketClient_);
-}
+        receiveThread_ = std::thread(&WebSocketClient::receive_actions_loop, &webSocketClient_);
+    }
 
+    void stop() {
+        gameEnded = true;
+        webSocketClient_.close();
+        if (receiveThread_.joinable()) receiveThread_.join();
+    }
 
-void stop() {
-    gameEnded = true;
-    webSocketClient_.close();
-    if (receiveThread_.joinable()) receiveThread_.join();
-}
-
-void startNetwork() {
-    startNetworkAsync();
-}
+    void startNetwork() {
+        startNetworkAsync();
+    }
 
     ~NetworkedGameClient() {
         stop();
@@ -213,6 +211,8 @@ void startNetwork() {
 
         auto player = Driver::realPlayer;
         if (!player || !player->canDrive()) return;
+
+        std::cout << "BEFORE - speedForward: " << player->speedForward << ", speedTurn: " << player->speedTurn << std::endl;
 
         // Reset previous inputs at the start of each action
         player->speedForward = 0.0f;
@@ -259,75 +259,71 @@ void startNetwork() {
         } else if (mat == LandMaterial::GRASS || mat == LandMaterial::DIRT) {
             player->speedForward *= 0.75f;
         }
-    // STONE and RAINBOW are normal track materials - no changes needed
-    }  
+        // STONE and RAINBOW are normal track materials - no changes needed
+    }
 
     void updateInputBlocking() {
         // This will be called regularly to update input blocking state
-
-        
-
         bool inRaceState = isInRaceState();
 
         //THIS LINE CAUSES THE GAME TO CRASH
         if (window.isOpen()) {
-    //Input::disableInputs(inRaceState);
-}
-
+            //Input::disableInputs(inRaceState);
+        }
     }
 
     void run() override {
-    Input::setGameWindow(window);
-    std::cout << "[DEBUG] setGameWindow(): window addr = " << &window << ", isOpen=" << window.isOpen() << "\n";
-    is_running_ = true;
+        Input::setGameWindow(window);
+        std::cout << "[DEBUG] setGameWindow(): window addr = " << &window << ", isOpen=" << window.isOpen() << "\n";
+        is_running_ = true;
 
-    sf::Clock timer;
-    sf::Time lastTime = sf::Time::Zero;
-    sf::Time fixedUpdateStep = sf::seconds(1.0f / framerate);
-    sf::Time fixedUpdateTime = sf::Time::Zero;
+        sf::Clock timer;
+        sf::Time lastTime = sf::Time::Zero;
+        sf::Time fixedUpdateStep = sf::seconds(1.0f / framerate);
+        sf::Time fixedUpdateTime = sf::Time::Zero;
 
-    while (!gameEnded) {
-        StatePtr currentState = getCurrentState();
+        while (!gameEnded) {
+            StatePtr currentState = getCurrentState();
 
-        sf::Time time = timer.getElapsedTime();
-        sf::Time deltaTime = time - lastTime;
-        lastTime = time;
-        if (deltaTime > sf::seconds(1.0f)) continue;
+            sf::Time time = timer.getElapsedTime();
+            sf::Time deltaTime = time - lastTime;
+            lastTime = time;
+            if (deltaTime > sf::seconds(1.0f)) continue;
 
-        handleEvents(currentState);
-        bool updated = currentState->update(deltaTime);
-        
-        fixedUpdateTime += deltaTime;
-        while (fixedUpdateTime >= fixedUpdateStep) {
-            fixedUpdateTime -= fixedUpdateStep;
-            updated = currentState->fixedUpdate(fixedUpdateStep) || updated;
+            handleEvents(currentState);
+            bool updated = currentState->update(deltaTime);
             
-            updateInputBlocking();
-            // SEND GAME STATE TO SERVER at fixed intervals
-            frameCounter++;
-            if (isInRaceState() && frameCounter >= SEND_EVERY_N_FRAMES) {
-                std::string observation = serializeGameState();
-                webSocketClient_.send_action(ActionCode::SEND_OBSERVATION, observation);
-                frameCounter = 0;
+            fixedUpdateTime += deltaTime;
+            while (fixedUpdateTime >= fixedUpdateStep) {
+                fixedUpdateTime -= fixedUpdateStep;
+                updated = currentState->fixedUpdate(fixedUpdateStep) || updated;
+                
+                updateInputBlocking();
+                // SEND GAME STATE TO SERVER at fixed intervals
+                frameCounter++;
+                if (isInRaceState() && frameCounter >= SEND_EVERY_N_FRAMES) {
+                    std::string observation = serializeGameState();
+                    webSocketClient_.send_action(ActionCode::SEND_OBSERVATION, observation);
+                    frameCounter = 0;
+                }
             }
-        }
-        
-        // KEEP RENDERING - Show visuals
-        if (updated) {
-            currentState->draw(window);
-            window.display();
-        }
+            
+            // KEEP RENDERING - Show visuals
+            if (updated) {
+                currentState->draw(window);
+                window.display();
+            }
 
-        handleTryPop();
+            handleTryPop();
+        }
+        is_running_ = false;
+        Input::disableInputs(false);
     }
-    is_running_ = false;
-    Input::disableInputs(false);
-}
 
-void startGame() {
-    std::cout << "SERVER COMMAND: Game is ready for AI control!" << std::endl;
+    void startGame() {
+        std::cout << "SERVER COMMAND: Game is ready for AI control!" << std::endl;
+    }
 
-}
 private:
     WebSocketClient webSocketClient_;
     std::thread receiveThread_;
@@ -336,7 +332,7 @@ private:
     int frameCounter = 0;
     const int SEND_EVERY_N_FRAMES = 6;
 
-         bool isInRaceState() {
+    bool isInRaceState() {
         StatePtr current = getCurrentState();
         if (!current) return false;
         
@@ -345,14 +341,48 @@ private:
         return (stateName == "Race"); // Exact match for "Race"
     }
 
-std::string serializeGameState() {
+    std::string serializeGameState() {
     auto player = Driver::realPlayer;
-    if (!player) return "GameFrame:0,PlayerHealth:0,speed:0.0";
-    
-    // Send ACTUAL data instead of hardcoded values
-    return "GameFrame:" + std::to_string(frameCounter) + 
-           ",PlayerHealth:100" +
-           ",speed:" + std::to_string(player->speedForward);
+    if (!player) return "speed:0.0,progress:0.0,angle_diff:0.0,gradient_x:0.0,gradient_y:0.0";
+
+    try {
+        // Get lookahead direction like built-in AI
+        int tilesForward = player->speedForward < player->vehicle->maxNormalLinearSpeed / 4.0f 
+            ? 1 
+            : Map::getCurrentMapAIFarVision();
+        
+        sf::Vector2f dirSum(0.0f, 0.0f);
+        sf::Vector2f current_pos = player->position;
+        for (int i = 0; i < tilesForward; i++) {
+            dirSum += AIGradientDescent::getNextDirection(current_pos);
+            current_pos += dirSum * 0.01f;
+        }
+        
+        // Calculate angle difference like built-in AI
+        float targetAngle = std::atan2(dirSum.y, dirSum.x);
+        float angle_diff = targetAngle - player->posAngle;
+        
+        // Normalize angle difference to [-π, π]
+        while (angle_diff > M_PI) angle_diff -= 2 * M_PI;
+        while (angle_diff < -M_PI) angle_diff += 2 * M_PI;
+        
+        int position_value = AIGradientDescent::getPositionValue(player->position);
+        float progress = position_value / 1000.0f;
+        
+        std::cout << "ANGLE_DEBUG - Target: " << targetAngle 
+                  << ", Current: " << player->posAngle 
+                  << ", Diff: " << angle_diff << std::endl;
+        
+        return "speed:" + std::to_string(player->speedForward) +
+               ",progress:" + std::to_string(progress) +
+               ",angle_diff:" + std::to_string(angle_diff) +
+               ",gradient_x:" + std::to_string(dirSum.x) +
+               ",gradient_y:" + std::to_string(dirSum.y);
+               
+    } catch (...) {
+        return "speed:" + std::to_string(player->speedForward) +
+               ",progress:0.0,angle_diff:0.0,gradient_x:0.0,gradient_y:0.0";
+    }
 }
 
     bool isInGameplayMode() {
@@ -360,10 +390,7 @@ std::string serializeGameState() {
         StatePtr current = getCurrentState();
         return current != nullptr;
     }
-   
-
-
- };
+};
 
 void WebSocketClient::handle_received_action(ActionCode action_code) {
     if (!game_client_) return;
