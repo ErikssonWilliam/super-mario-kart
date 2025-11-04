@@ -10,6 +10,8 @@
 #include <fstream>
 #include <chrono>
 #include "../src/game.h"
+#include "../src/map/map.h"
+#include "../src/map/enums.h"
 
 
 namespace beast = boost::beast;
@@ -212,17 +214,53 @@ void startNetwork() {
         auto player = Driver::realPlayer;
         if (!player || !player->canDrive()) return;
 
+        // Reset previous inputs at the start of each action
+        player->speedForward = 0.0f;
+        player->speedTurn = 0.0f;
+
         switch (action) {
             case ActionCode::MOVE_UP: 
-                // TODO: Connect to actual player movement
-                player->speedForward = 1.0f;
+                player->speedForward = 1.0f;  // Accelerate
+                break;
+            case ActionCode::MOVE_DOWN:
+                player->speedForward = -1.0f; // Brake/Reverse
+                break;
+            case ActionCode::MOVE_LEFT:
+                player->speedTurn = -1.0f;    // Turn left
+                break;
+            case ActionCode::MOVE_RIGHT:
+                player->speedTurn = 1.0f;     // Turn right
                 break;
             case ActionCode::ATTACK:
-                // TODO: Connect to actual attack system
+                // Use item if available
+                if (player->canUsePowerUp()) {
+                    player->pickUpPowerUp(PowerUps::NONE); // Trigger item use
+                }
                 break;
-            // Handle other actions
+            default:
+                // No action or unknown action - maintain current speed
+                break;
         }
-    }
+
+        // Apply terrain effects using proper map dimensions
+        sf::Vector2f normPos(
+            player->position.x / MAP_ASSETS_WIDTH,
+            player->position.y / MAP_ASSETS_HEIGHT
+        );
+
+        LandMaterial mat = Map::getMaterial(normPos);
+
+        if (mat == LandMaterial::WATER || mat == LandMaterial::LAVA || mat == LandMaterial::VOID) {
+            player->speedForward *= 0.5f;
+            player->speedTurn *= 0.7f;
+            if (mat == LandMaterial::WATER) {
+                Map::addEffectDrown(player->position, true);
+            }
+        } else if (mat == LandMaterial::GRASS || mat == LandMaterial::DIRT) {
+            player->speedForward *= 0.75f;
+        }
+    // STONE and RAINBOW are normal track materials - no changes needed
+    }  
 
     void updateInputBlocking() {
         // This will be called regularly to update input blocking state
@@ -307,10 +345,15 @@ private:
         return (stateName == "Race"); // Exact match for "Race"
     }
 
-    std::string serializeGameState() {
-        // TODO: Replace with actual game state extraction
-        return "GameFrame: " + std::to_string(0) + ", PlayerHealth: 100";
-    }
+std::string serializeGameState() {
+    auto player = Driver::realPlayer;
+    if (!player) return "GameFrame:0,PlayerHealth:0,speed:0.0";
+    
+    // Send ACTUAL data instead of hardcoded values
+    return "GameFrame:" + std::to_string(frameCounter) + 
+           ",PlayerHealth:100" +
+           ",speed:" + std::to_string(player->speedForward);
+}
 
     bool isInGameplayMode() {
         // Since we removed WaitingState, just check if we have any state
