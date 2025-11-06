@@ -1,6 +1,9 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <iostream>
+#include <string>
+#include <vector>
 
 enum class Key : int {
     // Driving actions
@@ -30,7 +33,7 @@ class Input {
     const sf::RenderWindow *gameWindow;
     bool inputsDisabled;
 
-    Input() : gameWindow(nullptr), inputsDisabled(false) {}
+    Input();
 
    public:
 

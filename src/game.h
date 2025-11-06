@@ -56,5 +56,5 @@ class Game {
     virtual void updateResolution();
     virtual bool fixedUpdate(sf::Time fixedUpdateStep) {
     return false; 
-};
+    }
 };

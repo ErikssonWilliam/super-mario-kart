@@ -8,7 +8,12 @@ int main() {
     try {
         asio::io_context ioc;
 
-        const std::string HOST = "127.0.0.1";
+        #ifdef IN_DOCKER
+            const std::string HOST = "python-server";  // Docker service name
+            std::cout << "DOCKER MODE: Connecting to python-server" << std::endl;
+        #else
+            const std::string HOST = "127.0.0.1";      // Local development
+        #endif
         const std::string PORT = "8080";
         const int BASE_WIDTH = static_cast<int>(BASIC_WIDTH / 2.0f);
         const int BASE_HEIGHT = static_cast<int>(BASIC_HEIGHT / 2.0f);
