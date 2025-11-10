@@ -65,7 +65,7 @@ void StateInitLoad::loadAllGameTextures() {
         sf::IntRect(76, 85, 24, 16));
 
     // Audio/music assets
-    Audio::loadAll();
+    //Audio::loadAll();
 
     // Other menu assets
     EndRanks::loadAssets("assets/gui/ranking.png", sf::IntRect(1, 1, 14, 16),
@@ -105,14 +105,14 @@ void StateInitLoad::init() {
 
     nintendoLogoTexture.loadFromFile("assets/gui/nintendo_logo.png");
 
-    audioDingId = Audio::loadDing();
+    //audioDingId = Audio::loadDing();
     StateInitLoad::loadAllGameTextures();
 }
 
 bool StateInitLoad::update(const sf::Time& deltaTime) {
     currentTime += deltaTime;
     if (!dingPlayed) {
-        Audio::play(audioDingId);
+        //Audio::play(audioDingId);
         dingPlayed = true;
     } else if (currentTime >= END_TIME) {
         game.pushState(StatePtr(new StateStart(game)));

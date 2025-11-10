@@ -25,7 +25,7 @@ all: debug
 debug: CPPFLAGS += -DDEBUG
 debug: CXXFLAGS += -O0 -ggdb
 debug: LDFLAGS += -pthread
-debug: LDLIBS += -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+debug: LDLIBS += -lsfml-graphics -lsfml-window -lsfml-system 
 debug: folders $(EXE)
 
 release: CPPFLAGS += -MMD -MP -DSFML_STATIC
@@ -37,13 +37,12 @@ release: LDFLAGS := -mwindows -static
 # see: https://www.sfml-dev.org/tutorials/2.4/start-cb.php
 release: LDLIBS += -lsfml-graphics-s -lsfml-window-s -lsfml-system-s -lopengl32
 release: LDLIBS += -lsfml-window-s -lsfml-system-s -lwinmm -lgdi32
-release: LDLIBS += -lsfml-audio-s -lsfml-system-s -lopenal32 -lflac -lvorbisenc -lvorbisfile -lvorbis -logg
 release: LDLIBS += -lsfml-system-s -lwinmm
 else
 # tested on debian 10
 release: CPPFLAGS += -fPIC -lqn -Wl,-rpath,$$ORIGIN/lib
 release: LDLIBS := -static-libgcc -static-libstdc++ -pthread
-release: LDLIBS += -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
+release: LDLIBS += -lsfml-graphics -lsfml-window -lsfml-system
 endif
 release: folders $(EXE)
 

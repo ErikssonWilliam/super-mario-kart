@@ -27,12 +27,15 @@ RUN g++ -std=c++17 \
     -lboost_system -lboost_thread -lpthread \
     -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio 
 
+# Copy and make executable the wrapper script
+
 ENV DISPLAY=:0
 CMD ["./networked_client"]
+
 
 #docker build -t mario-kart-client:latest .
 
 #Allow docker to show the graphics
 #xhost +
 
-#docker run -it --rm \-v /tmp/.X11-unix:/tmp/.X11-unix:rw \-e DISPLAY=:0 \mario-kart-client:latest
+#docker run -it --rm   --network ai-grand-prix_hackathon-net   -v /tmp/.X11-unix:/tmp/.X11-unix:rw   -e DISPLAY=:0   mario-kart-client:latest

@@ -1,13 +1,10 @@
 #pragma once
 
-#include <SFML/Audio.hpp>
-#include <mutex>
+#include <SFML/System.hpp>
+#include <SFML/Graphics.hpp>
+#include <string>
 
-#include "entities/enums.h"
-
-// all music annotations are based on this video:
-// https://www.youtube.com/watch?v=AlAmXXNz5ac
-
+// Copy ALL enum values from your real audio.h
 enum class Music : int {
     MENU_TITLE_SCREEN,        // mario kart main menu
     MENU_PLAYER_CIRCUIT,      // player & circuit/gp selection
@@ -73,93 +70,54 @@ enum class SFX : int {
     RESULTS_POINTS_UPDATE,  // leaderboard point update animation
 
     __COUNT,
+    DING,
 };
 
 class Audio {
-   private:
-    static constexpr const float VOLUME_MULTIPLIER = 0.8f;
-    static constexpr const float VOLUME_LOG_EXP = 1.0f;  // max true volume val.
-    std::array<sf::Music, (int)Music::__COUNT> musicList;
-    std::array<sf::SoundBuffer, (int)SFX::__COUNT> sfxList;
-    std::array<int, (int)SFX::__COUNT> sfxLastIndex = {-1};
-
-    std::array<sf::Music, (int)MenuPlayer::__COUNT> sfxEngines;
-    unsigned int playerIndex = 0;
-    bool raceMode = false;
-    bool enginesPlaying = false;
-
-    std::mutex musicMutex, sfxMutex;
-    static const int MAX_SOUNDS = 32;
-    std::array<sf::Sound, MAX_SOUNDS> playingSounds;
-    int currentSoundIndex = 0;
-    int lastDurableSFXIndex = 0;
-
+public:
+    // Singleton instance
     static Audio instance;
-    float musicVolumePct, sfxVolumePct;
-    float getMusicValue, getSFXValue;
-
-    Audio() {
-        musicVolumePct = logFunc(0.5f) * 100.0;
-        sfxVolumePct = logFunc(0.5f) * 100.0;
-        getMusicValue = 0.5f;
-        getSFXValue = 0.5f;
-    }
-    static SFX loadDing();  // small sound before everything starts loading :-)
-    static void loadAll();  // load rest of the assets meanwhile
-
-    static float logFunc(const float value);
-
-    void load(const Music music, const std::string &filename);
-    void load(const SFX sfx, const std::string &filename);
-
-    friend class StateInitLoad;
-
-   public:
-    static void loadCircuit(const std::string &folder);
-    static void play(const Music music, bool loop = true);
-    static void play(const SFX sfx, bool loop = false);
-
-    static bool isPlaying(const SFX sfx);
-
-    // fades out in 2s (aprox) by default
-    static void fadeOut(const Music music, const sf::Time &deltaTime,
-                        const sf::Time &time = sf::seconds(2.0f));
-
-    static void pauseMusic();
-    static void pauseSFX();
-
-    static void resumeMusic();
-    static void resumeSFX();
-
-    static void stopSFX();
-    static void stop(const SFX sfx);
-
-    static void stopMusic();
-
-    // set volume as percent 0-1
-    static void setVolume(const float musicVolumePct, const float sfxVolumePct);
-    static float getMusicVolume() {
-        // return instance.musicVolumePct / (100.0f * VOLUME_MULTIPLIER);
-        return instance.getMusicValue;
-    }
-    static float getSfxVolume() {
-        // instance.sfxVolumePct / (100.0f * VOLUME_MULTIPLIER);
-        return instance.getSFXValue;
-    }
-
-    static void setPitch(const SFX sfx, const float sfxPitch);
-
-    static void playEngines(unsigned int playerIndex, bool raceMode = true);
-    static void playEngines(bool playerOnly = false);
-    static void setEngineVolume(unsigned int i, float volume = 100.0f);
-    static void setEnginesVolume(float volume = 100.0f);
-    static void updateEngine(unsigned int i, sf::Vector2f position,
-                             float height, float speedForward, float speedTurn);
-    static void updateEngine(sf::Vector2f position, float height,
-                             float speedForward, float speedTurn);
-    static void updateListener(sf::Vector2f position, float angle,
-                               float height);
-    static void pauseEngines();
-    static void resumeEngines();
-    static void stopEngines();
+    
+    // Dummy methods that do nothing - ALL methods from original audio.h
+    static void loadAll() {}
+    static SFX loadDing() { return SFX::DING; }
+    static void play(const Music music, bool loop = true) {}
+    static void play(const SFX sfx, bool loop = false) {}
+    static void stop(const SFX sfx) {}
+    static bool isPlaying(const SFX sfx) { return false; }
+    static void stopMusic() {}
+    static void stopSFX() {}
+    static void stopEngines() {}
+    static void pauseMusic() {}
+    static void pauseSFX() {}
+    static void pauseEngines() {}
+    static void resumeMusic() {}
+    static void resumeSFX() {}
+    static void resumeEngines() {}
+    
+    // Volume methods (MISSING IN YOUR CURRENT DUMMY)
+    static void setVolume(float musicVolumePct, float sfxVolumePct) {}
+    static float getMusicVolume() { return 0.5f; }
+    static float getSfxVolume() { return 0.5f; }
+    
+    // Fade methods
+    static void fadeOut(const Music music, const sf::Time& deltaTime, const sf::Time& time = sf::seconds(2.0f)) {}
+    
+    // Engine methods
+    static void updateEngine(unsigned int i, sf::Vector2f position, float height, float speedForward, float speedTurn) {}
+    static void updateEngine(sf::Vector2f position, float height, float speedForward, float speedTurn) {}
+    static void updateListener(sf::Vector2f position, float angle, float height) {}
+    static void setEnginesVolume(float volume = 100.0f) {}
+    static void playEngines(unsigned int playerIndex, bool raceMode = true) {}
+    static void playEngines(bool playerOnly = false) {}
+    static void setEngineVolume(unsigned int i, float volume = 100.0f) {}
+    
+    // Circuit methods
+    static void loadCircuit(const std::string& folder) {}
+    
+    // Additional methods
+    static void setPitch(const SFX sfx, float sfxPitch) {}
+    
+    Audio() = default;
+    ~Audio() = default;
 };

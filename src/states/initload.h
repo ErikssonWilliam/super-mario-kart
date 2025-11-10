@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#include "audio/audio.h"
+//#include "audio/audio.h"
 #include "entities/banana.h"
 #include "entities/effectcoin.h"
 #include "entities/effectdrown.h"
@@ -30,7 +30,7 @@ class StateInitLoad : public State {
     sf::Texture nintendoLogoTexture;
 
     sf::Time currentTime;
-    SFX audioDingId;
+    //SFX audioDingId;
 
     bool dingPlayed;
 
