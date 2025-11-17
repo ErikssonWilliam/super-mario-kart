@@ -185,54 +185,21 @@ void StateStart::handleEvent(const sf::Event& event) {
             if (Input::pressed(Key::ACCEPT, event) ||
                 Input::pressed(Key::ACCELERATE, event)) {
                 Audio::play(SFX::MENU_SELECTION_ACCEPT);
-                switch (MenuOption(selectedOption)) {
-                    case MenuOption::GRAND_PRIX:
-                        selectedMode = MenuOption::GRAND_PRIX;
-                        currentState = MenuState::CC_FADE_IN;
-                        break;
-                    case MenuOption::VERSUS:
-                        selectedMode = MenuOption::VERSUS;
-                        currentState = MenuState::CC_FADE_IN;
-                        break;
-                    case MenuOption::CONTROLS:
-                        currentState = MenuState::CONTROLS_FADE_IN;
-                        break;
-                    case MenuOption::SETTINGS:
-                        currentState = MenuState::SETTINGS_FADE_IN;
-                        break;
-                    default:
-                        break;
-                }
+                selectedMode = MenuOption::VERSUS;
+                currentState = MenuState::CC_FADE_IN;
                 timeSinceStateChange = sf::Time::Zero;
             } else if (Input::pressed(Key::CANCEL, event)) {
                 Audio::play(SFX::MENU_SELECTION_CANCEL);
                 currentState = MenuState::MENU_FADE_OUT;
                 timeSinceStateChange = sf::Time::Zero;
-            } else if (Input::pressed(Key::MENU_DOWN, event)) {
-                Audio::play(SFX::MENU_SELECTION_MOVE);
-                selectedOption =
-                    (selectedOption + 1) % (unsigned int)MenuOption::__COUNT;
-            } else if (Input::pressed(Key::MENU_UP, event)) {
-                Audio::play(SFX::MENU_SELECTION_MOVE);
-                selectedOption =
-                    (selectedOption - 1) % (unsigned int)MenuOption::__COUNT;
             }
             break;
         case MenuState::CC:
             if (Input::pressed(Key::ACCEPT, event) ||
                 Input::pressed(Key::ACCELERATE, event)) {
                 Audio::play(SFX::MENU_SELECTION_ACCEPT);
-                switch (selectedMode) {
-                    case MenuOption::GRAND_PRIX:
-                        currentState = MenuState::GAME_FADE;
-                        break;
-                    case MenuOption::VERSUS:
-                        loadPreview(RaceCircuit(0));
-                        currentState = MenuState::CIRCUIT_FADE_IN;
-                        break;
-                    default:
-                        break;
-                }
+                loadPreview(RaceCircuit(0));
+                currentState = MenuState::CIRCUIT_FADE_IN;
                 selectedCC = CCOption(selectedOption);
                 timeSinceStateChange = sf::Time::Zero;
             } else if (Input::pressed(Key::CANCEL, event)) {
@@ -478,17 +445,13 @@ bool StateStart::update(const sf::Time& deltaTime) {
         float speedMultiplier,          // multiply vehicleproperties by factor
             playerCharacterMultiplier;  // player speed vs ai speed
         switch (selectedCC) {
-            case CCOption::CC50:
-                speedMultiplier = 1.75f;
-                playerCharacterMultiplier = 1.15f;
-                break;
-            case CCOption::CC100:
-                speedMultiplier = 2.1f;
-                playerCharacterMultiplier = 1.09f;
-                break;
             case CCOption::CC150:
                 speedMultiplier = 2.7f;
                 playerCharacterMultiplier = 1.055f;
+                break;
+            case CCOption::NO_BOTS:
+                speedMultiplier = 2.7f;
+                playerCharacterMultiplier = 1.0f;
                 break;
             default:
                 speedMultiplier = 1.0f;
@@ -496,17 +459,9 @@ bool StateStart::update(const sf::Time& deltaTime) {
                 std::cerr << "Error: Invalid CC option" << std::endl;
                 break;
         }
-        if (selectedMode == MenuOption::GRAND_PRIX) {
-            game.pushState(StatePtr(new StateRaceManager(
-                game, RaceMode::GRAND_PRIX_1, speedMultiplier,
-                playerCharacterMultiplier, selectedCC)));
-        } else if (selectedMode == MenuOption::VERSUS) {
-            game.pushState(StatePtr(new StateRaceManager(
-                game, RaceMode::VERSUS, speedMultiplier,
-                playerCharacterMultiplier, selectedCC, selectedCircuit)));
-        } else {
-            std::cerr << "Error: wrong gamemode selected" << std::endl;
-        }
+        game.pushState(StatePtr(new StateRaceManager(
+            game, RaceMode::VERSUS, speedMultiplier,
+            playerCharacterMultiplier, selectedCC, selectedCircuit)));
     }
 
     return true;
@@ -631,34 +586,10 @@ void StateStart::draw(sf::RenderTarget& window) {
     // menu text
     if (currentState == MenuState::MENU) {
         sf::Vector2f text1Pos = ABS_MENU + REL_TEXT1;
-        sf::Vector2f text2Pos = ABS_MENU + REL_TEXT2;
-        sf::Vector2f text3Pos = ABS_MENU + REL_TEXT3;
-        sf::Vector2f text4Pos = ABS_MENU + REL_TEXT4;
-        sf::Color color1 = Color::MenuPrimaryOnFocus,
-                  color2 = Color::MenuPrimary, color3 = Color::MenuPrimary,
-                  color4 = Color::MenuPrimary;
-        if (selectedOption == 1)
-            std::swap(color1, color2);
-        else if (selectedOption == 2)
-            std::swap(color1, color3);
-        else if (selectedOption == 3)
-            std::swap(color1, color4);
-        TextUtils::write(
-            window, "grand prix",
-            sf::Vector2f(text1Pos.x * windowSize.x, text1Pos.y * windowSize.y),
-            scale, color1);
         TextUtils::write(
             window, "versus",
-            sf::Vector2f(text2Pos.x * windowSize.x, text2Pos.y * windowSize.y),
-            scale, color2);
-        TextUtils::write(
-            window, "controls",
-            sf::Vector2f(text3Pos.x * windowSize.x, text3Pos.y * windowSize.y),
-            scale, color3);
-        TextUtils::write(
-            window, "settings",
-            sf::Vector2f(text4Pos.x * windowSize.x, text4Pos.y * windowSize.y),
-            scale, color4);
+            sf::Vector2f(text1Pos.x * windowSize.x, text1Pos.y * windowSize.y),
+            scale, Color::MenuPrimaryOnFocus);
     }
 
     // cc selection black box
@@ -697,26 +628,18 @@ void StateStart::draw(sf::RenderTarget& window) {
         sf::Vector2f leftPos = ABS_CC + REL_CC0;
 
         TextUtils::write(
-            window, "easy......50 cc",
-            sf::Vector2f(leftPos.x * windowSize.x, leftPos.y * windowSize.y),
-            scale,
-            selectedOption == (unsigned int)CCOption::CC50
-                ? Color::MenuPrimaryOnFocus
-                : Color::MenuPrimary);
-        leftPos += REL_CCDY;
-        TextUtils::write(
-            window, "normal...100 cc",
-            sf::Vector2f(leftPos.x * windowSize.x, leftPos.y * windowSize.y),
-            scale,
-            selectedOption == (unsigned int)CCOption::CC100
-                ? Color::MenuPrimaryOnFocus
-                : Color::MenuPrimary);
-        leftPos += REL_CCDY;
-        TextUtils::write(
-            window, "hard.....150 cc",
+            window, "hard (with bots)",
             sf::Vector2f(leftPos.x * windowSize.x, leftPos.y * windowSize.y),
             scale,
             selectedOption == (unsigned int)CCOption::CC150
+                ? Color::MenuPrimaryOnFocus
+                : Color::MenuPrimary);
+        leftPos += REL_CCDY;
+        TextUtils::write(
+            window, "no bots",
+            sf::Vector2f(leftPos.x * windowSize.x, leftPos.y * windowSize.y),
+            scale,
+            selectedOption == (unsigned int)CCOption::NO_BOTS
                 ? Color::MenuPrimaryOnFocus
                 : Color::MenuPrimary);
     }

@@ -8,9 +8,25 @@ void StateRaceManager::resetBeforeRace() {
     EndRanks::reset(&positions);
     StateRace::currentTime = sf::Time::Zero;
     for (unsigned int i = 0; i < positions.size(); i++) {
-        sf::Vector2f pos = Map::getPlayerInitialPosition(i + 1);
-        positions[i]->setPositionAndReset(
-            sf::Vector2f(pos.x / MAP_ASSETS_WIDTH, pos.y / MAP_ASSETS_HEIGHT));
+        sf::Vector2f pos;
+        if (ccOption == CCOption::NO_BOTS && i > 0) {
+            // Place disabled bots at the same position as player but they won't move
+            // Since they're DISABLED, they won't render or update
+            pos = Map::getPlayerInitialPosition(1);
+            pos.x = pos.x / MAP_ASSETS_WIDTH;
+            pos.y = pos.y / MAP_ASSETS_HEIGHT;
+        } else {
+            pos = Map::getPlayerInitialPosition(i + 1);
+            pos.x = pos.x / MAP_ASSETS_WIDTH;
+            pos.y = pos.y / MAP_ASSETS_HEIGHT;
+        }
+        positions[i]->setPositionAndReset(pos);
+        
+        // Set invisible state AFTER reset (setPositionAndReset calls reset() which clears state)
+        if (ccOption == CCOption::NO_BOTS && i > 0) {
+            // Use a very large time value to keep them invisible for the entire race
+            positions[i]->pushStateEnd(DriverState::INVISIBLE, sf::seconds(999999.0f));
+        }
     }
 }
 
@@ -19,16 +35,39 @@ void StateRaceManager::setPlayer() {
     // apply player character multiplier to player vehicle
     drivers[(int)selectedPlayer]->vehicle =
         &drivers[(int)selectedPlayer]->vehicle->makePlayer();
-    for (int i = 0; i < count; i++) {
+    
+    if (ccOption == CCOption::NO_BOTS) {
+        // NO_BOTS mode: Only the player participates
+        // Disable all bots (they'll be made invisible in resetBeforeRace)
+        for (int i = 0; i < count; i++) {
+            if (i == (int)selectedPlayer) {
+                drivers[i]->controlType = DriverControlType::PLAYER;
+            } else {
+                drivers[i]->controlType = DriverControlType::DISABLED;
+            }
+        }
+        // Put player in first position
+        positions[0] = drivers[(int)selectedPlayer].get();
+        // Fill remaining positions with the disabled bots
+        int posIdx = 1;
+        for (int i = 0; i < count; i++) {
+            if (i != (int)selectedPlayer) {
+                positions[posIdx++] = drivers[i].get();
+            }
+        }
+    } else {
+        // Normal mode with bots
+        for (int i = 0; i < count; i++) {
 #ifdef NO_ANIMATIONS
-        drivers[i]->controlType = DriverControlType::DISABLED;
+            drivers[i]->controlType = DriverControlType::DISABLED;
 #else
-        drivers[i]->controlType = DriverControlType::AI_GRADIENT;
+            drivers[i]->controlType = DriverControlType::AI_GRADIENT;
 #endif
+        }
+        // move selected player to last position
+        std::swap(positions[(int)selectedPlayer], positions[count - 1]);
+        std::random_shuffle(positions.begin(), positions.begin() + (count - 1));
     }
-    // move selected player to last position
-    std::swap(positions[(int)selectedPlayer], positions[count - 1]);
-    std::random_shuffle(positions.begin(), positions.begin() + (count - 1));
 }
 
 void StateRaceManager::init(const float _speedMultiplier,
@@ -102,6 +141,10 @@ bool StateRaceManager::update(const sf::Time &) {
                 Map::getPlayerInitialPosition(currentPlayerPosition + 1);
             Audio::updateListener(cameraInitPosition, -M_PI_2, 0.0f);
             for (unsigned int i = 0; i < drivers.size(); i++) {
+                // Skip disabled bots in NO_BOTS mode
+                if (ccOption == CCOption::NO_BOTS && drivers[i]->controlType == DriverControlType::DISABLED) {
+                    continue;
+                }
                 Audio::updateEngine(i, drivers[i]->position, drivers[i]->height,
                                     0.0f, 0.0f);
             }
@@ -122,7 +165,8 @@ bool StateRaceManager::update(const sf::Time &) {
                 mode == RaceMode::VERSUS) {
                 if (mode == RaceMode::VERSUS) {
                     // "grand prix ranking" equals the race ranking
-                    for (unsigned int i = 0; i < grandPrixRanking.size(); i++) {
+                    unsigned int numActiveDrivers = (ccOption == CCOption::NO_BOTS) ? 1 : positions.size();
+                    for (unsigned int i = 0; i < numActiveDrivers; i++) {
                         grandPrixRanking[i].first = positions[i];
                     }
                 }

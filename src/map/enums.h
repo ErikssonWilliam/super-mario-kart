@@ -18,9 +18,8 @@ constexpr int NUM_LAPS_IN_CIRCUIT = 5;
 
 // cup speed selection menu
 enum class CCOption : unsigned int {
-    CC50,
-    CC100,
     CC150,
+    NO_BOTS,
     __COUNT,
 };
 

@@ -2,7 +2,7 @@
 
 Input Input::instance;
 
-Input::Input() {
+Input::Input() : gameWindow(nullptr), inputsDisabled(false) {
     // Driving actions
     set(Key::ACCELERATE, sf::Keyboard::X);
     set(Key::BRAKE, sf::Keyboard::Z);

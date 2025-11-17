@@ -111,11 +111,12 @@ void StateCongratulations::init(const GrandPrixRankingArray &standings) {
 
     // configure driver array so only first 3 elements matter (last 5 are set
     // to pseudoPlayer so they aren't rendered by getDriverDrawables)
+    unsigned int numDriversToShow = (ccOption == CCOption::NO_BOTS) ? 1 : standings.size();
     for (unsigned int i = 0; i < standings.size(); i++) {
-        if (standings[i].first->getPj() == player) {
+        if (i < numDriversToShow && standings[i].first->getPj() == player) {
             playerRankedPosition = i + 1;
         }
-        if (i < PODIUM_DISPLACEMENTS.size()) {
+        if (i < PODIUM_DISPLACEMENTS.size() && i < numDriversToShow) {
             Driver *driver = standings[i].first;
             driver->position =
                 targetCameraPosition + sf::Vector2f(PODIUM_DISPLACEMENTS[i].x,
@@ -279,14 +280,11 @@ void StateCongratulations::draw(sf::RenderTarget &window) {
 
     std::string text1;
     switch (ccOption) {
-        case CCOption::CC50:
-            text1 = "50cc";
-            break;
-        case CCOption::CC100:
-            text1 = "100cc";
-            break;
         case CCOption::CC150:
             text1 = "150cc";
+            break;
+        case CCOption::NO_BOTS:
+            text1 = "no bots";
             break;
         default:
             std::cerr << "Error: invalid CC option" << std::endl;

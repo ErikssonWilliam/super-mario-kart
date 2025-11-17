@@ -78,16 +78,13 @@ static std::random_device rd;
 static std::mt19937 randGen(rd());
 
 static const int FAR_VISIONS[(int)CCOption::__COUNT][(int)MenuPlayer::__COUNT] =
-    {{0, 0, 0, 0, -1, 1, 1, 1},
-     {0, 0, 1, 1, -1, -2, 2, 2},
+    {{1, 1, 1, -1, -1, -2, 2, 2},
      {1, 1, 1, -1, -1, -2, 2, 2}};
 
 static const int ITEM_PROB_MODS[(int)CCOption::__COUNT][(
-    int)MenuPlayer::__COUNT] = {{7, 7, 6, 6, 6, 6, 2, 1},
-                                {4, 4, 4, 4, 3, 2, 2, 1},
+    int)MenuPlayer::__COUNT] = {{2, 1, 1, 1, 1, 1, 1, 1},
                                 {2, 1, 1, 1, 1, 1, 1, 1}};
 
 static const unsigned int IMPEDIMENTS[(int)CCOption::__COUNT][(
-    int)MenuPlayer::__COUNT] = {{128, 128, 96, 96, 96, 64, 64, 48},
-                                {96, 64, 64, 48, 48, 48, 32, 32},
+    int)MenuPlayer::__COUNT] = {{64, 64, 64, 48, 48, 32, 32, 16},
                                 {64, 64, 64, 48, 48, 32, 32, 16}};

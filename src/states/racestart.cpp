@@ -6,7 +6,7 @@
 const sf::Time StateRaceStart::ANIMATION_FORWARD_TIME = sf::seconds(8.75f);
 const sf::Time StateRaceStart::ANIMATION_TURN_TIME = sf::seconds(10.0f);
 const float StateRaceStart::PROB_HIT_BY_CC[(int)CCOption::__COUNT] = {
-    0.95, 0.975, 1.0};
+    1.0, 1.0};
 
 void StateRaceStart::asyncLoad() {
     // assumes that course (map) has finished loading

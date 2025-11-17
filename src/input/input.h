@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <iostream>
 
 enum class Key : int {
     // Driving actions
@@ -30,7 +31,7 @@ class Input {
     const sf::RenderWindow *gameWindow;
     bool inputsDisabled;
 
-    Input() : gameWindow(nullptr), inputsDisabled(false) {}
+    Input();
 
    public:
 
@@ -65,36 +66,30 @@ class Input {
                event.key.code == get(action);
     }
     static inline bool held(const Key action) {
+        if (instance.inputsDisabled) {
+            // Define which keys are DRIVING controls (to block)
+            bool isDrivingControl = 
+                action == Key::ACCELERATE ||
+                action == Key::BRAKE ||
+                action == Key::DRIFT ||
+                action == Key::TURN_LEFT || 
+                action == Key::TURN_RIGHT ||
+                action == Key::ITEM_FRONT ||
+                action == Key::ITEM_BACK;
             
-            if (instance.inputsDisabled) {
-                // Define which keys are DRIVING controls (to block)
-                bool isDrivingControl = 
-                    action == Key::ACCELERATE ||
-                    action == Key::BRAKE ||
-                    action == Key::DRIFT ||
-                    action == Key::TURN_LEFT || 
-                    action == Key::TURN_RIGHT ||
-                    action == Key::ITEM_FRONT ||
-                    action == Key::ITEM_BACK;
-                
-                if (isDrivingControl) {
-                    return false; // Block driving inputs when disabled
-                }
-                // Allow menu controls (PAUSE, ACCEPT, etc.) even when disabled
+            if (isDrivingControl) {
+                return false; // Block driving inputs when disabled
             }
-
-            if (!instance.gameWindow) {
-        return sf::Keyboard::isKeyPressed(get(action));
-        std::cout << "[DEBUG] gameWindow is nullptr\n";
-    } else {
-    std::cout << "[DEBUG] gameWindow addr = " << instance.gameWindow << ", isOpen=" 
-              << instance.gameWindow->isOpen() << "\n";
-}
-            
-            
-            return sf::Keyboard::isKeyPressed(get(action)) &&
-                instance.gameWindow->hasFocus();
+            // Allow menu controls (PAUSE, ACCEPT, etc.) even when disabled
         }
+
+        if (!instance.gameWindow) {
+            return sf::Keyboard::isKeyPressed(get(action));
+        }
+        
+        return sf::Keyboard::isKeyPressed(get(action)) &&
+            instance.gameWindow->hasFocus();
+    }
     // returns true if key is accepted in game
     static std::string getActionName(const Key action);
 

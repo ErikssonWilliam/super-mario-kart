@@ -66,10 +66,7 @@ class StateStart : public State {
     sf::Time timeSinceStateChange;
 
     enum class MenuOption : unsigned int {
-        GRAND_PRIX,
         VERSUS,
-        CONTROLS,
-        SETTINGS,
         __COUNT,
     };
     unsigned int selectedOption;  // for all menus, not only the first menu
